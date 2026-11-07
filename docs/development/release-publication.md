@@ -4,7 +4,7 @@ For example, run **Prepare release candidate** after a change reaches `dev`. The
 
 The action runs only when requested through **Run workflow**. A local commit or a push to `dev` does not start it automatically.
 
-For example, `project(CLAS12SampleTools VERSION 1.0.1 LANGUAGES CXX)` in the top-level [`CMakeLists.txt`](../../CMakeLists.txt) produces the PR title **Publish release candidate v1.0.1**. The description records code version `1.0.1` and the source commit. The action reads the version that CMake evaluated when configuring the validated publication snapshot; creating or updating the PR uses that same value. It does not create a version tag or GitHub release. Change the CMake version before committing the next version to `dev`. If CMake does not provide a numeric version, validation fails before publication.
+For example, `project(CLAS12SampleTools VERSION 1.0.2 LANGUAGES CXX)` in the top-level [`CMakeLists.txt`](../../CMakeLists.txt) produces the PR title **Publish release candidate v1.0.2**. The description records code version `1.0.2` and the source commit. The action reads the version that CMake evaluated when configuring the validated publication snapshot; creating or updating the PR uses that same value. It does not create a version tag or GitHub release. Change the CMake version before committing the next version to `dev`. If CMake does not provide a numeric version, validation fails before publication.
 
 ## Files included in the PR
 
@@ -34,7 +34,7 @@ The publication commit is based on `main`, rather than on the development commit
 
 ## Repeated runs and failures
 
-The candidate commit message is `v<version> from <commit>`, for example `v1.0.1 from db30d2e5871bcde67a0399d6c245f801d423c5ff`. The version and full commit hash come from the validated `dev` snapshot. GitHub’s squash-merge message can still be edited separately when merging the PR.
+The candidate commit message is `v<version> from <commit>`, for example `v1.0.2 from db30d2e5871bcde67a0399d6c245f801d423c5ff`. The version and full commit hash come from the validated `dev` snapshot. GitHub’s squash-merge message can still be edited separately when merging the PR.
 
 The action creates one publication commit on the current `main` and replaces the remote `release-candidate` branch using `--force-with-lease`. This Git option permits replacement only if the remote branch still has the commit observed by the action. If another writer changes it, the push fails rather than discarding that change. Replacing the candidate removes earlier candidate commits from that branch; their source commits remain on `dev`.
 
