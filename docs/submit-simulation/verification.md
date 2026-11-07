@@ -34,11 +34,11 @@ After tasks finish, possible failure indicators are:
 - Missing expected files in `RUN/mchipo/` or `RUN/reconhipo/`, or both.
 - A failure state or nonzero exit code for a finished task in Slurm accounting, where available.
 
-Inspect the affected task's `.out` and `.err` files and any available dashboard diagnostics to find what went wrong. The default farm-output location, `/u/scifarm/farm_out/<username>`, is indicated in [`submit_GEMC_sample.sh`](../../src/workflows/slurm-submission/external/submit_GEMC_sample.sh) as `/farm_out/<username>`; both paths refer to the same directory. Explicitly, the script sets the destinations for the `.out` and `.err` files with:
+Inspect the affected task's `.out` and `.err` files and any available dashboard diagnostics to find what went wrong. The [worker script](../../src/workflows/slurm-submission/external/submit_GEMC_sample.sh) writes these scheduler logs under `/farm_out/<username>`. Both directives below use one leading slash and the same `/farm_out/` prefix:
 
 ```shell
 #SBATCH --output=/farm_out/%u/%x-%j-%N.out
-#SBATCH --error=//farm_out/%u/%x-%j-%N.err
+#SBATCH --error=/farm_out/%u/%x-%j-%N.err
 ```
 
 The `--farm-out` option selects an explicit cleanup directory, not the scheduler-log destination. Avoid clearing these logs until you have investigated the failure.
