@@ -6,7 +6,7 @@
 #SBATCH --partition=production                                                               
 #SBATCH --time=20:00:00                                                                                               
 #SBATCH --output=/farm_out/%u/%x-%j-%N.out                                                                           
-#SBATCH --error=//farm_out/%u/%x-%j-%N.err                                                                           
+#SBATCH --error=/farm_out/%u/%x-%j-%N.err                                                                           
 
 JOB_TARGET=${SAMPLE_TARGET_NUCLEUS}
 # Align non-path values in column 29; keep path printouts in their existing format.
