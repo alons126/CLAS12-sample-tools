@@ -19,6 +19,16 @@ cmake \
 
 The code adopts the C++ standard published by ROOT and requires at least C++17. It does not force a different standard that might be incompatible with the selected ROOT build.
 
+## After moving or renaming a checkout
+
+For example, renaming a checkout from `CLAS12-sample-generator` to `CLAS12-sample-tools` leaves the old absolute paths in its CMake cache. The cache is the saved build configuration. CMake then reports that its cache directory or source directory does not match, and the application never starts.
+
+When building, the [LUND build launcher](../../src/launcher/workflow.py) compares the source and build paths recorded in the cache with the current paths. If either differs, it prints the old and current paths, deletes only `<build-dir>/CMakeCache.txt` and `<build-dir>/CMakeFiles/` with its contents, and configures again. Here, `<build-dir>` is the selected build directory. Other files in that directory remain. The launcher checks both deletion targets before changing either one and rejects symbolic links or unexpected file types. A read or deletion failure stops the workflow before configuration or LUND creation.
+
+This removes custom options saved only in the cache. The new configuration uses the launcher settings and current environment. Matching caches remain in place. `--build false` skips the check and deletion. The check does not detect a compiler or ROOT change at the same paths; select a fresh build directory for those changes.
+
+With code that does not yet perform this recovery, or when building directly with CMake, select an unused build directory. For the physical LUND converter, add `--build-dir build/release-new` to your existing creation command. Keep its sample options and use your actual writable output parent. This leaves the previous build directory untouched. The [ifarm checkout cleanup](../submit-simulation/ifarm-environment.md#disposable-checkout) preserves custom build directories only when they are inside `build/`.
+
 ## Select ROOT explicitly
 
 If CMake cannot find the intended ROOT installation, configure a fresh tree with its prefix:
