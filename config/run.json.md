@@ -16,6 +16,8 @@ The file is strict JSON. Unknown keys fail, so explanations live here rather tha
 
 The launcher starts with built-in defaults, replaces them with values from the selected JSON file, then applies command-line overrides. For example, `--jobs 2` replaces the checked-in value of 4.
 
+Before building, it checks whether the CMake cache records a different source or build path. If so, it reports and deletes only `<build-dir>/CMakeCache.txt` and `<build-dir>/CMakeFiles/` with its contents, then configures again. Here, `<build-dir>` is the resolved `build_dir` setting. Custom options saved only in the cache are lost. Other files remain. `--build false` skips this check. See [path recovery](../docs/development/building.md#after-moving-or-renaming-a-checkout) for failure behavior and use of a fresh build directory.
+
 Use another file by passing it to [`run.csh`](../run.csh) with `--run-settings`:
 
 ```tcsh

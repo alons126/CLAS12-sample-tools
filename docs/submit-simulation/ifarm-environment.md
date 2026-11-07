@@ -69,6 +69,8 @@ Use the ifarm repository copy to run code, not to keep development edits. Before
 
 For example, an untracked profile you saved inside the ifarm checkout can be deleted before the workflow tries to read it. A custom build directory is also deleted unless it is inside `build/`. Keep the only copy of valuable code, configuration, and output elsewhere.
 
+The Git cleanup preserves `build/`, so its CMake cache can still contain old paths after the checkout is moved or renamed. Before a requested LUND build, the launcher detects a source or build path mismatch and deletes only `<build-dir>/CMakeCache.txt` and `<build-dir>/CMakeFiles/` with its contents. Here, `<build-dir>` is the selected build directory. It configures again with the current settings and environment; custom options saved only in the cache are lost. Other files remain. See [build path recovery](../development/building.md#after-moving-or-renaming-a-checkout) for checks and failure behavior.
+
 Place LUND and HIPO data on shared storage outside the checkout. Commit and push valuable repository changes before invoking [`run.csh`](../../run.csh).
 
 The cleanup can happen even when the requested workflow later fails its checks. Only a few checks run first: bare [`source run.csh --help`](../../run.csh) returns without cleanup or updating, and submission help and argument-syntax checks run early when `--workflow submit` (or `--workflow=submit`) is the first option. Full input and sample-setting checks run after cleanup and updating. Forwarded LUND help (`-- --help`) also runs afterward. In a development checkout, use the compiled application's `--help` directly.

@@ -6,8 +6,9 @@ Purpose:
     Keep build settings separate from sample settings and detector submission.
 
 Execution flow:
-    Parse launcher flags -> load config/run.json -> configure/build -> run uniform-lund-creator or
-    event-generator-to-lund-converter with the original sample arguments.
+    Parse launcher flags -> load config/run.json -> clear CMake configuration if its recorded paths
+    changed -> configure/build -> run uniform-lund-creator or event-generator-to-lund-converter with
+    the original sample arguments.
 
 Inputs:
     A create-lund source, strict build JSON, optional terminal colors, and sample options. Relative
@@ -15,6 +16,8 @@ Inputs:
 
 Outputs:
     Build products, LUND files, and a completion manifest. Creation never submits simulation jobs.
+    When building after a source or build directory moves, remove only CMakeCache.txt and CMakeFiles/
+    inside the selected build directory. Other files remain. --build false skips this cleanup.
 
 Failure:
     Invalid settings or failed commands stop the workflow and return a nonzero status. Child
@@ -45,6 +48,7 @@ import argparse
 import json
 from pathlib import Path
 import shlex
+import shutil
 import subprocess
 import sys
 import os
@@ -452,6 +456,78 @@ def banner(name):
         print(f'CLAS12 samples: {name}', flush=True)
 # endregion
 
+# CMake path recovery ---------------------------------------------------------------------------------------------------------------------------------------------------
+
+# region CMake path recovery
+def prepare_build_directory(build):
+    """Clear CMake configuration that records a different source or build directory.
+
+    Purpose:
+        After a checkout is renamed, its saved absolute paths prevent CMake from configuring it.
+        Remove that configuration so CMake can discover the current paths and dependencies again.
+
+    Workflow:
+        Read CMake's source and build paths -> compare resolved paths -> validate cleanup targets ->
+        report the mismatch -> remove CMakeCache.txt and CMakeFiles/ before configuration.
+
+    Args:
+        build: Absolute, resolved build directory selected by the launcher.
+
+    Outputs:
+        Preserve matching or absent caches. For a path mismatch, print a warning and delete only
+        the cache file and CMakeFiles/ with its contents. Other files in the build directory remain.
+        Cached custom options are lost; the next configure uses launcher settings and the environment.
+
+    Raises:
+        OSError: If the cache cannot be read or its configuration cannot be removed.
+        ValueError: If either cleanup target is a symbolic link or has an unexpected file type.
+            Both targets are checked before deleting either one. Callers must stop on failure.
+    """
+
+    cache = build / 'CMakeCache.txt'
+    cmake_files = build / 'CMakeFiles'
+
+    if cache.is_symlink():
+        raise ValueError(f'CMake cache must not be a symbolic link: {cache}')
+
+    if not cache.exists():
+        return
+
+    if not cache.is_file():
+        raise ValueError(f'CMake cache must be a regular file: {cache}')
+
+    recorded_paths = {}
+
+    for line in cache.read_text(encoding='utf-8').splitlines():
+        key, separator, value = line.partition('=')
+
+        if separator and key in ('CMAKE_HOME_DIRECTORY:INTERNAL', 'CMAKE_CACHEFILE_DIR:INTERNAL'):
+            recorded_paths[key] = value
+
+    expected_paths = {'CMAKE_HOME_DIRECTORY:INTERNAL': ROOT.resolve(),
+                      'CMAKE_CACHEFILE_DIR:INTERNAL': build}
+    mismatches = [f'{key.split(":", 1)[0]}: {recorded_paths[key]} -> {expected}'
+                  for key, expected in expected_paths.items()
+                  if key in recorded_paths and Path(recorded_paths[key]).resolve() != expected]
+
+    if not mismatches:
+        return
+
+    if cmake_files.is_symlink() or (cmake_files.exists() and not cmake_files.is_dir()):
+        raise ValueError(f'CMakeFiles must be a directory and not a symbolic link: {cmake_files}')
+
+    print(f'{WARNING_COLOR}Warning:{RESET_COLOR} CMake recorded different source or build paths:\n'
+          + '\n'.join(f'    {mismatch}' for mismatch in mismatches), flush=True)
+    print(f'{SYSTEM_COLOR}Removing stale CMake configuration (including cached custom options):\n'
+          f'    {cache}\n    {cmake_files}\n'
+          f'CMake will configure again using the launcher settings and current environment.{RESET_COLOR}', flush=True)
+
+    if cmake_files.exists():
+        shutil.rmtree(cmake_files)
+
+    cache.unlink()
+# endregion
+
 # main ------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 # region main
@@ -462,8 +538,8 @@ def main():
         Let the shell scripts handle checkout setup while this function builds and runs the LUND program.
 
     Execution flow:
-        Parse settings -> resolve the build path -> optionally build -> optionally run the selected
-        LUND program -> print success.
+        Parse settings -> resolve the build path -> optionally clear moved CMake configuration and
+        build -> optionally run the selected LUND program -> print success.
 
     Args:
         None. Launcher and forwarded child options are read from ``sys.argv``.
@@ -513,6 +589,9 @@ def main():
         print(f"{SYSTEM_COLOR}= Compiling applications                                                                           ={RESET_COLOR}")
         print(f"{SYSTEM_COLOR}===================================================================================================={RESET_COLOR}")
         print()
+
+        # A preserved build tree can still contain paths from before the checkout was renamed.
+        prepare_build_directory(build)
 
         # Reconfigure so CMake sees local external-file changes and build both LUND programs.
         execute(['cmake', '-S', str(ROOT), '-B', str(build), '-DCMAKE_BUILD_TYPE='+config['build_type'],
